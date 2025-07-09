@@ -275,7 +275,12 @@ export default function CoinsScreen({ navigation }) {
           style={[styles.tab, activeTab === "brands" && styles.activeTab]}
           onPress={() => setActiveTab("brands")}
         >
-          <Text style={[styles.tabText, activeTab === "brands" && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "brands" && styles.activeTabText,
+            ]}
+          >
             Partner Brands
           </Text>
         </TouchableOpacity>
@@ -283,7 +288,12 @@ export default function CoinsScreen({ navigation }) {
           style={[styles.tab, activeTab === "transactions" && styles.activeTab]}
           onPress={() => setActiveTab("transactions")}
         >
-          <Text style={[styles.tabText, activeTab === "transactions" && styles.activeTabText]}>
+          <Text
+            style={[
+              styles.tabText,
+              activeTab === "transactions" && styles.activeTabText,
+            ]}
+          >
             Transaction History
           </Text>
         </TouchableOpacity>

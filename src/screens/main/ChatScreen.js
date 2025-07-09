@@ -136,7 +136,7 @@ export default function ChatScreen({ navigation }) {
           mode="outlined"
           onPress={() => navigation.navigate("MyGroups")}
           style={styles.myGroupsButton}
-          icon="account-outline"
+          icon="account"
         >
           My Groups
         </Button>

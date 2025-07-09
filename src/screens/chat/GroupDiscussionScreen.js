@@ -22,7 +22,10 @@ import {
 } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
-import { chatStorage } from "../../services/localStorage";
+import {
+  chatStorage,
+  reinitializeDiscussions,
+} from "../../services/localStorage";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function GroupDiscussionScreen({ route, navigation }) {
@@ -52,8 +55,20 @@ export default function GroupDiscussionScreen({ route, navigation }) {
       const groupInfo = groups.find((g) => g.id === groupId);
       if (groupInfo) {
         setGroup(groupInfo);
-        // Set navigation title
-        navigation.setOptions({ title: groupInfo.name });
+        // Set navigation title with debug button
+        navigation.setOptions({
+          title: groupInfo.name,
+          headerRight: () => (
+            <IconButton
+              icon="refresh"
+              size={20}
+              onPress={async () => {
+                await reinitializeDiscussions();
+                loadDiscussions();
+              }}
+            />
+          ),
+        });
       }
     } catch (error) {
       console.error("Error loading group info:", error);
@@ -63,8 +78,10 @@ export default function GroupDiscussionScreen({ route, navigation }) {
   const loadDiscussions = async () => {
     setLoading(true);
     try {
+      console.log("Loading discussions for groupId:", groupId);
       // Load discussions from local storage
       const groupDiscussions = await chatStorage.getGroupDiscussions(groupId);
+      console.log("Found discussions:", groupDiscussions);
       setDiscussions(groupDiscussions);
     } catch (error) {
       console.error("Error loading discussions:", error);
@@ -130,74 +147,80 @@ export default function GroupDiscussionScreen({ route, navigation }) {
   const getTypeIcon = (type) => {
     switch (type) {
       case "question":
-        return "help-circle";
+        return "help-circle-outline";
       case "announcement":
-        return "bullhorn";
+        return "bullhorn-outline";
       case "general":
-        return "chat";
+        return "chat-outline";
       default:
-        return "message";
+        return "message-outline";
     }
   };
+  const renderDiscussion = ({ item }) => {
+    const authorName = item.author_name || item.user_name || "Unknown User";
+    const authorInitials = authorName.substring(0, 2).toUpperCase();
 
-  const renderDiscussion = ({ item }) => (
-    <Card style={styles.discussionCard}>
-      <Card.Content>
-        <View style={styles.discussionHeader}>
-          <Avatar.Text
-            size={40}
-            label={item.author_name.substring(0, 2).toUpperCase()}
-            style={styles.authorAvatar}
-          />
-          <View style={styles.discussionInfo}>
-            <Text style={styles.authorName}>{item.author_name}</Text>
-            <Text style={styles.timestamp}>
-              {new Date(item.created_at).toLocaleString()}
-            </Text>
+    return (
+      <Card style={styles.discussionCard}>
+        <Card.Content>
+          <View style={styles.discussionHeader}>
+            <Avatar.Text
+              size={40}
+              label={authorInitials}
+              style={styles.authorAvatar}
+            />
+            <View style={styles.discussionInfo}>
+              <Text style={styles.authorName}>{authorName}</Text>
+              <Text style={styles.timestamp}>
+                {new Date(item.created_at).toLocaleString()}
+              </Text>
+            </View>
+            <Chip
+              icon={getTypeIcon(item.type)}
+              style={[
+                styles.typeChip,
+                { backgroundColor: getTypeColor(item.type) },
+              ]}
+              textStyle={styles.chipText}
+            >
+              {item.type
+                ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
+                : "General"}
+            </Chip>
           </View>
-          <Chip
-            icon={getTypeIcon(item.type)}
-            style={[
-              styles.typeChip,
-              { backgroundColor: getTypeColor(item.type) },
-            ]}
-            textStyle={styles.chipText}
-          >
-            {item.type.charAt(0).toUpperCase() + item.type.slice(1)}
-          </Chip>
-        </View>
 
-        <Text style={styles.discussionTitle}>{item.title}</Text>
-        <Text style={styles.discussionContent} numberOfLines={3}>
-          {item.content}
-        </Text>
+          <Text style={styles.discussionTitle}>{item.title || "No Title"}</Text>
+          <Text style={styles.discussionContent} numberOfLines={3}>
+            {item.content || "No content"}
+          </Text>
 
-        <View style={styles.discussionActions}>
-          <Button
-            mode="text"
-            icon="thumb-up"
-            onPress={() => handleLikeDiscussion(item.id)}
-            style={styles.actionButton}
-          >
-            {item.likes || 0}
-          </Button>
-          <Button
-            mode="text"
-            icon="comment"
-            onPress={() =>
-              navigation.navigate("DiscussionDetail", {
-                discussionId: item.id,
-                groupId: groupId,
-              })
-            }
-            style={styles.actionButton}
-          >
-            {item.replies ? item.replies.length : 0}
-          </Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
+          <View style={styles.discussionActions}>
+            <Button
+              mode="text"
+              icon="thumb-up"
+              onPress={() => handleLikeDiscussion(item.id)}
+              style={styles.actionButton}
+            >
+              {item.likes || 0}
+            </Button>
+            <Button
+              mode="text"
+              icon="comment"
+              onPress={() =>
+                navigation.navigate("DiscussionDetail", {
+                  discussionId: item.id,
+                  groupId: groupId,
+                })
+              }
+              style={styles.actionButton}
+            >
+              {item.replies ? item.replies.length : 0}
+            </Button>
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
 
   const renderHeader = () => (
     <View style={styles.headerContainer}>

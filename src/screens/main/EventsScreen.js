@@ -125,26 +125,33 @@ export default function EventsScreen({ navigation }) {
           <View style={styles.metaRow}>
             <Ionicons name="calendar" size={16} color="#666" />
             <Text style={styles.metaText}>
-              {new Date(item.date).toLocaleDateString()} at{" "}
-              {new Date(item.date).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {item.date
+                ? `${new Date(item.date).toLocaleDateString()} at ${new Date(
+                    item.date
+                  ).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}`
+                : "No date specified"}
             </Text>
           </View>
 
           <View style={styles.metaRow}>
             <Ionicons name="location" size={16} color="#666" />
-            <Text style={styles.metaText}>{item.location}</Text>
+            <Text style={styles.metaText}>
+              {item.location || "No location"}
+            </Text>
           </View>
 
           <View style={styles.metaRow}>
             <Ionicons name="person" size={16} color="#666" />
-            <Text style={styles.metaText}>Organized by {item.organizer}</Text>
+            <Text style={styles.metaText}>
+              Organized by {item.organizer || "Unknown"}
+            </Text>
           </View>
         </View>
         <View style={styles.tagsContainer}>
-          <Chip icon="account-outline" style={styles.chip}>
+          <Chip icon="account" style={styles.chip}>
             {item.attendeeCount || 0} attending
           </Chip>
           {item.coins_reward && (

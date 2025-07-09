@@ -114,13 +114,25 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.welcomeHeader}>
               <Avatar.Text
                 size={60}
-                label={userProfile?.full_name?.substring(0, 2) || "U"}
+                label={
+                  userProfile?.full_name
+                    ? userProfile.full_name.substring(0, 2).toUpperCase()
+                    : user?.name
+                    ? user.name.substring(0, 2).toUpperCase()
+                    : "U"
+                }
                 style={styles.avatar}
               />
               <View style={styles.welcomeText}>
                 <Title>Welcome back!</Title>
-                <Paragraph>{userProfile?.full_name || "Unknown User"}</Paragraph>
-                <Text style={styles.university}>{userProfile?.university || "No university"}</Text>
+                <Paragraph>
+                  {userProfile?.full_name || user?.name || "Unknown User"}
+                </Paragraph>
+                <Text style={styles.university}>
+                  {userProfile?.university ||
+                    user?.university ||
+                    "No university"}
+                </Text>
               </View>
             </View>
 
@@ -156,7 +168,7 @@ export default function HomeScreen({ navigation }) {
               </Button>
               <Button
                 mode="contained"
-                icon="account-outline"
+                icon="account"
                 onPress={() => navigation.navigate("CreateGroup")}
                 style={styles.actionButton}
               >
@@ -184,10 +196,12 @@ export default function HomeScreen({ navigation }) {
                     <Paragraph numberOfLines={2}>{event.description}</Paragraph>
                     <View style={styles.eventMeta}>
                       <Chip icon="calendar" style={styles.chip}>
-                        {new Date(event.date).toLocaleDateString()}
+                        {event.date
+                          ? new Date(event.date).toLocaleDateString()
+                          : "No date"}
                       </Chip>
                       <Chip icon="map-marker" style={styles.chip}>
-                        {event.location}
+                        {event.location || "No location"}
                       </Chip>
                     </View>
                   </Card.Content>

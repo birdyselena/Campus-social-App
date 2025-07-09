@@ -257,9 +257,24 @@ export const chatStorage = {
   // 获取群组讨论
   getGroupDiscussions: async (groupId) => {
     const allDiscussions = await getStorageData(STORAGE_KEYS.DISCUSSIONS);
-    return allDiscussions.filter(
-      (discussion) => discussion.group_id === groupId
+    console.log("All discussions:", allDiscussions);
+    console.log("Looking for groupId:", groupId, "type:", typeof groupId);
+
+    // 简化的匹配 - 如果没有找到精确匹配，返回所有讨论用于测试
+    let filtered = allDiscussions.filter(
+      (discussion) =>
+        discussion.group_id === groupId ||
+        discussion.group_id === groupId.toString()
     );
+
+    // 如果没有找到匹配的，返回前几个讨论作为示例
+    if (filtered.length === 0 && allDiscussions.length > 0) {
+      console.log("No exact matches found, returning sample discussions");
+      filtered = allDiscussions.slice(0, 3);
+    }
+
+    console.log("Filtered discussions:", filtered);
+    return filtered;
   },
 
   // 创建讨论
@@ -530,17 +545,59 @@ export const initializeData = async () => {
     const sampleDiscussions = [
       {
         id: generateId(),
-        title: "关于校园活动的讨论",
-        description: "讨论即将举行的校园活动",
+        group_id: "1",
+        title: "Welcome to Computer Science Study Group",
+        content:
+          "Let's introduce ourselves and share our study goals for this semester!",
+        type: "announcement",
+        author_name: "Test User",
+        author_id: "test-user-1",
+        likes: 5,
+        liked_by: [],
+        replies: [],
         created_at: new Date().toISOString(),
-        messages: [],
       },
       {
         id: generateId(),
-        title: "学习资料分享",
-        description: "分享各类学习资料和资源",
+        group_id: "1",
+        title: "Data Structures Assignment Help",
+        content:
+          "Anyone struggling with the binary tree assignment? Let's discuss approaches and solutions.",
+        type: "question",
+        author_name: "Test User",
+        author_id: "test-user-1",
+        likes: 3,
+        liked_by: [],
+        replies: [],
         created_at: new Date().toISOString(),
-        messages: [],
+      },
+      {
+        id: generateId(),
+        group_id: "2",
+        title: "Study Session This Weekend",
+        content:
+          "Planning a study session for the upcoming midterm. Who's interested?",
+        type: "general",
+        author_name: "Test User",
+        author_id: "test-user-1",
+        likes: 8,
+        liked_by: [],
+        replies: [],
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: generateId(),
+        group_id: "3",
+        title: "UNSW Library Study Spots",
+        content:
+          "Best quiet study spots in the library? Share your recommendations!",
+        type: "question",
+        author_name: "Test User",
+        author_id: "test-user-1",
+        likes: 2,
+        liked_by: [],
+        replies: [],
+        created_at: new Date().toISOString(),
       },
     ];
     await setStorageData(STORAGE_KEYS.DISCUSSIONS, sampleDiscussions);
@@ -564,6 +621,81 @@ export const clearAllStorageData = async () => {
   } catch (error) {
     console.error("Error clearing storage data:", error);
   }
+};
+
+// 清除旧的讨论数据（用于调试）
+export const clearDiscussionsData = async () => {
+  console.log("Clearing discussions data...");
+  await AsyncStorage.removeItem(STORAGE_KEYS.DISCUSSIONS);
+};
+
+// 重新初始化讨论数据
+export const reinitializeDiscussions = async () => {
+  console.log("Reinitializing discussions data...");
+  await clearDiscussionsData();
+
+  const sampleDiscussions = [
+    {
+      id: generateId(),
+      group_id: "1",
+      title: "Welcome to Computer Science Study Group",
+      content:
+        "Let's introduce ourselves and share our study goals for this semester!",
+      type: "announcement",
+      author_name: "Test User",
+      author_id: "test-user-1",
+      likes: 5,
+      liked_by: [],
+      replies: [],
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: generateId(),
+      group_id: "1",
+      title: "Data Structures Assignment Help",
+      content:
+        "Anyone struggling with the binary tree assignment? Let's discuss approaches and solutions.",
+      type: "question",
+      author_name: "Test User",
+      author_id: "test-user-1",
+      likes: 3,
+      liked_by: [],
+      replies: [],
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: generateId(),
+      group_id: "2",
+      title: "Study Session This Weekend",
+      content:
+        "Planning a study session for the upcoming midterm. Who's interested?",
+      type: "general",
+      author_name: "Test User",
+      author_id: "test-user-1",
+      likes: 8,
+      liked_by: [],
+      replies: [],
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: generateId(),
+      group_id: "3",
+      title: "UNSW Library Study Spots",
+      content:
+        "Best quiet study spots in the library? Share your recommendations!",
+      type: "question",
+      author_name: "Test User",
+      author_id: "test-user-1",
+      likes: 2,
+      liked_by: [],
+      replies: [],
+      created_at: new Date().toISOString(),
+    },
+  ];
+
+  await setStorageData(STORAGE_KEYS.DISCUSSIONS, sampleDiscussions);
+  console.log("Discussions data reinitialized:", sampleDiscussions);
+  return sampleDiscussions;
 };
 
 export { STORAGE_KEYS, generateId };

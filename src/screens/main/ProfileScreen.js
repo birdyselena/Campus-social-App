@@ -46,7 +46,7 @@ export default function ProfileScreen({ navigation }) {
     {
       label: "Groups Joined",
       value: "5", // This would come from a query
-      icon: "account-outline",
+      icon: "account",
       color: "#2196F3",
     },
     {
@@ -68,10 +68,18 @@ export default function ProfileScreen({ navigation }) {
             style={styles.avatar}
           />
           <View style={styles.profileInfo}>
-            <Title style={styles.name}>{userProfile?.full_name || "Unknown User"}</Title>
-            <Paragraph style={styles.email}>{user?.email || "No email"}</Paragraph>
-            <Text style={styles.university}>{userProfile?.university || "No university"}</Text>
-            <Text style={styles.studentId}>ID: {userProfile?.student_id || "No ID"}</Text>
+            <Title style={styles.name}>
+              {userProfile?.full_name || "Unknown User"}
+            </Title>
+            <Paragraph style={styles.email}>
+              {user?.email || "No email"}
+            </Paragraph>
+            <Text style={styles.university}>
+              {userProfile?.university || "No university"}
+            </Text>
+            <Text style={styles.studentId}>
+              ID: {userProfile?.student_id || "No ID"}
+            </Text>
           </View>
         </Card.Content>
       </Card>

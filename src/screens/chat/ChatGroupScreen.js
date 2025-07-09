@@ -7,17 +7,38 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import { Text, TextInput, Button, Card, Avatar } from "react-native-paper";
+import {
+  Text,
+  TextInput,
+  Button,
+  Card,
+  Avatar,
+  IconButton,
+} from "react-native-paper";
 import { useAuth } from "../../context/AuthContext";
 import { chatStorage } from "../../services/localStorage";
 import { useFocusEffect } from "@react-navigation/native";
 
-export default function ChatGroupScreen({ route }) {
+export default function ChatGroupScreen({ route, navigation }) {
   const { groupId } = route.params;
   const { user, userProfile } = useAuth();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 设置header按钮
+  useEffect(() => {
+    navigation.setOptions({
+      title: "Group Chat",
+      headerRight: () => (
+        <IconButton
+          icon="forum"
+          size={24}
+          onPress={() => navigation.navigate("GroupDiscussion", { groupId })}
+        />
+      ),
+    });
+  }, [navigation, groupId]);
 
   // 使用 useFocusEffect 确保每次页面获得焦点时都重新加载消息
   useFocusEffect(

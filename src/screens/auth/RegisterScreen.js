@@ -53,11 +53,9 @@ export default function RegisterScreen({ navigation }) {
     });
 
     if (result.success) {
-      Alert.alert(
-        "Success",
-        "Account created successfully!",
-        [{ text: "OK", onPress: () => navigation.navigate("Login") }]
-      );
+      Alert.alert("Success", "Account created successfully!", [
+        { text: "OK", onPress: () => navigation.navigate("Login") },
+      ]);
     } else {
       Alert.alert("Registration Failed", result.error || "Registration failed");
     }

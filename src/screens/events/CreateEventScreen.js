@@ -66,7 +66,9 @@ export default function CreateEventScreen({ navigation }) {
       let eventDateTime;
       try {
         if (formData.date && formData.time) {
-          eventDateTime = new Date(`${formData.date}T${formData.time}`).toISOString();
+          eventDateTime = new Date(
+            `${formData.date}T${formData.time}`
+          ).toISOString();
         } else {
           eventDateTime = new Date().toISOString();
         }
