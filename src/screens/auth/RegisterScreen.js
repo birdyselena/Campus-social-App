@@ -25,7 +25,7 @@ export default function RegisterScreen({ navigation }) {
   const [university, setUniversity] = useState("");
   const [studentId, setStudentId] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
+  const { register } = useAuth();
 
   const handleRegister = async () => {
     if (!email || !password || !fullName || !university || !studentId) {
@@ -44,20 +44,22 @@ export default function RegisterScreen({ navigation }) {
     }
 
     setLoading(true);
-    const { data, error } = await signUp(email, password, {
-      fullName,
+    const result = await register({
+      email,
+      password,
+      full_name: fullName,
       university,
-      studentId,
+      student_id: studentId,
     });
 
-    if (error) {
-      Alert.alert("Registration Failed", error.message);
-    } else {
+    if (result.success) {
       Alert.alert(
         "Success",
-        "Account created successfully! Please check your email to verify your account.",
+        "Account created successfully!",
         [{ text: "OK", onPress: () => navigation.navigate("Login") }]
       );
+    } else {
+      Alert.alert("Registration Failed", result.error || "Registration failed");
     }
     setLoading(false);
   };

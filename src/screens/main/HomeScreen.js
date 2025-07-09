@@ -119,8 +119,8 @@ export default function HomeScreen({ navigation }) {
               />
               <View style={styles.welcomeText}>
                 <Title>Welcome back!</Title>
-                <Paragraph>{userProfile?.full_name}</Paragraph>
-                <Text style={styles.university}>{userProfile?.university}</Text>
+                <Paragraph>{userProfile?.full_name || "Unknown User"}</Paragraph>
+                <Text style={styles.university}>{userProfile?.university || "No university"}</Text>
               </View>
             </View>
 
@@ -156,7 +156,7 @@ export default function HomeScreen({ navigation }) {
               </Button>
               <Button
                 mode="contained"
-                icon="account-group"
+                icon="account-outline"
                 onPress={() => navigation.navigate("CreateGroup")}
                 style={styles.actionButton}
               >

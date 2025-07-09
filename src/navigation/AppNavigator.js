@@ -20,6 +20,10 @@ import CoinsScreen from "../screens/main/CoinsScreen";
 // Chat Screens
 import ChatGroupScreen from "../screens/chat/ChatGroupScreen";
 import CreateGroupScreen from "../screens/chat/CreateGroupScreen";
+import GroupInfoScreen from "../screens/chat/GroupInfoScreen";
+import MyGroupsScreen from "../screens/chat/MyGroupsScreen";
+import GroupDiscussionScreen from "../screens/chat/GroupDiscussionScreen";
+import DiscussionDetailScreen from "../screens/chat/DiscussionDetailScreen";
 
 // Event Screens
 import EventDetailsScreen from "../screens/events/EventDetailsScreen";
@@ -42,7 +46,7 @@ const TabNavigator = () => {
           if (route.name === "Home") {
             iconName = focused ? "home" : "home-outline";
           } else if (route.name === "Chat") {
-            iconName = focused ? "chatbubbles" : "chatbubbles-outline";
+            iconName = focused ? "chatbox" : "chatbox-outline";
           } else if (route.name === "Events") {
             iconName = focused ? "calendar" : "calendar-outline";
           } else if (route.name === "Coins") {
@@ -95,6 +99,16 @@ const MainStack = () => {
         options={{ title: "Create Group" }}
       />
       <Stack.Screen
+        name="GroupInfo"
+        component={GroupInfoScreen}
+        options={{ title: "Group Info" }}
+      />
+      <Stack.Screen
+        name="MyGroups"
+        component={MyGroupsScreen}
+        options={{ title: "My Groups" }}
+      />
+      <Stack.Screen
         name="EventDetails"
         component={EventDetailsScreen}
         options={{ title: "Event Details" }}
@@ -113,6 +127,16 @@ const MainStack = () => {
         name="Redemption"
         component={RedemptionScreen}
         options={{ title: "Redeem Coins" }}
+      />
+      <Stack.Screen
+        name="GroupDiscussion"
+        component={GroupDiscussionScreen}
+        options={{ title: "Group Discussion" }}
+      />
+      <Stack.Screen
+        name="DiscussionDetail"
+        component={DiscussionDetailScreen}
+        options={{ title: "Discussion Detail" }}
       />
     </Stack.Navigator>
   );

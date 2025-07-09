@@ -5,10 +5,12 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import { Text, TextInput, Button, Card, Avatar } from "react-native-paper";
 import { useAuth } from "../../context/AuthContext";
-import { supabase } from "../../services/supabase";
+import { chatStorage } from "../../services/localStorage";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function ChatGroupScreen({ route }) {
   const { groupId } = route.params;
@@ -17,75 +19,61 @@ export default function ChatGroupScreen({ route }) {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchMessages();
-    subscribeToMessages();
-  }, []);
+  // 使用 useFocusEffect 确保每次页面获得焦点时都重新加载消息
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchMessages();
+    }, [])
+  );
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
-        .from("messages")
-        .select(
-          `
-          *,
-          users(full_name, id)
-        `
-        )
-        .eq("group_id", groupId)
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
-      setMessages(data || []);
+      const messagesData = await chatStorage.getGroupMessages(groupId);
+      setMessages(messagesData);
     } catch (error) {
       console.error("Error fetching messages:", error);
     }
   };
 
-  const subscribeToMessages = () => {
-    const subscription = supabase
-      .channel(`messages:group_id=eq.${groupId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `group_id=eq.${groupId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
-        }
-      )
-      .subscribe();
-
-    return () => supabase.removeChannel(subscription);
-  };
-
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
+    // 检查用户是否存在
+    console.log("Current user:", user); // Debug log
+    if (!user || !user.id) {
+      Alert.alert("Error", "Please log in to send messages");
+      return;
+    }
+
     setLoading(true);
     try {
-      const { error } = await supabase.from("messages").insert([
-        {
-          content: newMessage,
-          user_id: user.id,
-          group_id: groupId,
-          created_at: new Date().toISOString(),
-        },
-      ]);
+      const messageData = {
+        content: newMessage.trim(),
+        user_id: user.id,
+        group_id: groupId,
+        sender_name: user.full_name || user.name || "Unknown User",
+      };
 
-      if (error) throw error;
-      setNewMessage("");
+      console.log("Sending message:", messageData); // Debug log
+
+      const sentMessage = await chatStorage.sendMessage(messageData);
+
+      console.log("Message sent:", sentMessage); // Debug log
+
+      if (sentMessage) {
+        setNewMessage("");
+        // Refresh messages to show the new message
+        fetchMessages();
+      }
     } catch (error) {
       console.error("Error sending message:", error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
     }
     setLoading(false);
   };
 
   const renderMessage = ({ item }) => {
-    const isOwnMessage = item.user_id === user.id;
+    const isOwnMessage = user && user.id && item.user_id === user.id;
 
     return (
       <View
@@ -97,7 +85,11 @@ export default function ChatGroupScreen({ route }) {
         {!isOwnMessage && (
           <Avatar.Text
             size={32}
-            label={item.users?.full_name?.substring(0, 2) || "U"}
+            label={
+              item.sender_name
+                ? item.sender_name.substring(0, 2).toUpperCase()
+                : "U"
+            }
             style={styles.messageAvatar}
           />
         )}
@@ -109,10 +101,24 @@ export default function ChatGroupScreen({ route }) {
         >
           <Card.Content style={styles.messageContent}>
             {!isOwnMessage && (
-              <Text style={styles.senderName}>{item.users?.full_name}</Text>
+              <Text style={styles.senderName}>
+                {item.sender_name || "Unknown"}
+              </Text>
             )}
-            <Text style={styles.messageText}>{item.content}</Text>
-            <Text style={styles.messageTime}>
+            <Text
+              style={[
+                styles.messageText,
+                isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
+              ]}
+            >
+              {item.content}
+            </Text>
+            <Text
+              style={[
+                styles.messageTime,
+                isOwnMessage ? styles.ownMessageTime : styles.otherMessageTime,
+              ]}
+            >
               {new Date(item.created_at).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -135,6 +141,12 @@ export default function ChatGroupScreen({ route }) {
         keyExtractor={(item) => item.id.toString()}
         style={styles.messagesList}
         contentContainerStyle={styles.messagesContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No messages yet</Text>
+            <Text style={styles.emptySubtext}>Start the conversation!</Text>
+          </View>
+        }
       />
 
       <View style={styles.inputContainer}>
@@ -145,12 +157,15 @@ export default function ChatGroupScreen({ route }) {
           style={styles.textInput}
           multiline
           maxLength={500}
+          mode="outlined"
+          dense
+          onSubmitEditing={sendMessage}
         />
         <Button
           mode="contained"
           onPress={sendMessage}
           loading={loading}
-          disabled={!newMessage.trim()}
+          disabled={!newMessage.trim() || loading}
           style={styles.sendButton}
         >
           Send
@@ -206,26 +221,56 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
+  },
+  ownMessageText: {
     color: "white",
+  },
+  otherMessageText: {
+    color: "#333",
   },
   messageTime: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.7)",
     marginTop: 4,
     alignSelf: "flex-end",
+  },
+  ownMessageTime: {
+    color: "rgba(255,255,255,0.7)",
+  },
+  otherMessageTime: {
+    color: "#999",
   },
   inputContainer: {
     flexDirection: "row",
     padding: 16,
     backgroundColor: "white",
     alignItems: "flex-end",
+    borderTopWidth: 1,
+    borderTopColor: "#e0e0e0",
   },
   textInput: {
     flex: 1,
     marginRight: 8,
     maxHeight: 100,
+    backgroundColor: "white",
   },
   sendButton: {
     alignSelf: "flex-end",
+    minWidth: 80,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#666",
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: "#999",
+    marginTop: 8,
   },
 });

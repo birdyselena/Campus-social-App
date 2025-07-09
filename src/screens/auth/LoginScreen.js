@@ -21,7 +21,7 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -30,10 +30,24 @@ export default function LoginScreen({ navigation }) {
     }
 
     setLoading(true);
-    const { data, error } = await signIn(email, password);
+    const result = await login(email, password);
 
-    if (error) {
-      Alert.alert("Login Failed", error.message);
+    if (result.success) {
+      // 登录成功，导航会自动处理
+    } else {
+      Alert.alert("Login Failed", result.error);
+    }
+    setLoading(false);
+  };
+
+  const handleTestLogin = async () => {
+    setLoading(true);
+    const result = await login("student@university.edu", "password123");
+
+    if (result.success) {
+      // 登录成功，导航会自动处理
+    } else {
+      Alert.alert("Test Login Failed", result.error);
     }
     setLoading(false);
   };
@@ -78,6 +92,26 @@ export default function LoginScreen({ navigation }) {
                 disabled={loading}
               >
                 {loading ? <ActivityIndicator color="white" /> : "Login"}
+              </Button>
+
+              <Button
+                mode="outlined"
+                onPress={handleTestLogin}
+                style={[styles.button, { marginTop: 10 }]}
+                disabled={loading}
+              >
+                Test Login
+              </Button>
+
+              <Button
+                mode="outlined"
+                onPress={() => {
+                  setEmail("student@university.edu");
+                  setPassword("password123");
+                }}
+                style={styles.button}
+              >
+                Use Test Account
               </Button>
 
               <Button

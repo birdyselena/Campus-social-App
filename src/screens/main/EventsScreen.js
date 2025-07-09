@@ -13,7 +13,8 @@ import {
 } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
-import { supabase } from "../../services/supabase";
+import { eventStorage } from "../../services/localStorage";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function EventsScreen({ navigation }) {
   const { user, updateCoinsBalance } = useAuth();
@@ -23,10 +24,12 @@ export default function EventsScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [userAttendance, setUserAttendance] = useState({});
 
-  useEffect(() => {
-    fetchEvents();
-    fetchUserAttendance();
-  }, []);
+  // 使用 useFocusEffect 确保每次页面获得焦点时都重新加载数据
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchEvents();
+    }, [])
+  );
 
   useEffect(() => {
     // Filter events based on search query
@@ -46,93 +49,20 @@ export default function EventsScreen({ navigation }) {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      // Mock events data
-      const mockEvents = [
-        {
-          id: "1",
-          title: "Campus Career Fair",
-          description:
-            "Meet recruiters from top tech companies, startups, and traditional businesses. Bring your resume and dress professionally!",
-          date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Student Center Main Hall",
-          attendeeCount: 156,
-          organizer: "Career Services",
-          coins_reward: 20,
-          users: { full_name: "Career Services" },
-          event_attendees: [],
-        },
-        {
-          id: "2",
-          title: "Study Group - Advanced Physics",
-          description:
-            "Weekly physics study group focusing on quantum mechanics and relativity. All levels welcome!",
-          date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Library Room 204",
-          attendeeCount: 23,
-          organizer: "Physics Student Association",
-          coins_reward: 15,
-          users: { full_name: "Physics Student Association" },
-          event_attendees: [],
-        },
-        {
-          id: "3",
-          title: "Campus Movie Night",
-          description:
-            "Free outdoor movie screening under the stars. Popcorn and drinks provided! This week: The Social Network",
-          date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Quad Lawn",
-          attendeeCount: 89,
-          organizer: "Student Activities Board",
-          coins_reward: 10,
-          users: { full_name: "Student Activities Board" },
-          event_attendees: [],
-        },
-        {
-          id: "4",
-          title: "Coding Bootcamp Workshop",
-          description:
-            "Learn web development basics with HTML, CSS, and JavaScript. Perfect for beginners!",
-          date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Computer Lab B",
-          attendeeCount: 67,
-          organizer: "Computer Science Club",
-          coins_reward: 25,
-          users: { full_name: "Computer Science Club" },
-          event_attendees: [],
-        },
-        {
-          id: "5",
-          title: "Environmental Awareness Seminar",
-          description:
-            "Learn about sustainable living and how you can make a difference. Guest speakers from Green Peace.",
-          date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-          location: "Auditorium A",
-          attendeeCount: 43,
-          organizer: "Environmental Club",
-          coins_reward: 15,
-          users: { full_name: "Environmental Club" },
-          event_attendees: [],
-        },
-      ];
+      const eventsData = await eventStorage.getAllEvents();
+      setEvents(eventsData);
 
-      setEvents(mockEvents);
+      // 检查用户参与情况
+      const attendance = {};
+      eventsData.forEach((event) => {
+        attendance[event.id] =
+          event.attendees && event.attendees.includes(user.id);
+      });
+      setUserAttendance(attendance);
     } catch (error) {
       console.error("Error fetching events:", error);
     }
     setLoading(false);
-  };
-
-  const fetchUserAttendance = async () => {
-    try {
-      // Mock user attendance - for demo, assume user is attending event with id '2'
-      const mockAttendance = {
-        2: true, // User is attending the Physics study group
-      };
-
-      setUserAttendance(mockAttendance);
-    } catch (error) {
-      console.error("Error fetching user attendance:", error);
-    }
   };
 
   const handleAttendEvent = async (eventId) => {
@@ -140,45 +70,32 @@ export default function EventsScreen({ navigation }) {
       const isAttending = userAttendance[eventId];
 
       if (isAttending) {
-        // Remove attendance
-        const { error } = await supabase
-          .from("event_attendees")
-          .delete()
-          .eq("event_id", eventId)
-          .eq("user_id", user.id);
-
-        if (error) throw error;
-
+        // 取消参加
+        await eventStorage.cancelAttendEvent(eventId, user.id);
         setUserAttendance((prev) => ({
           ...prev,
           [eventId]: false,
         }));
       } else {
-        // Add attendance
-        const { error } = await supabase.from("event_attendees").insert([
-          {
-            event_id: eventId,
-            user_id: user.id,
-            joined_at: new Date().toISOString(),
-          },
-        ]);
-
-        if (error) throw error;
-
+        // 参加活动
+        await eventStorage.attendEvent(eventId, user.id);
         setUserAttendance((prev) => ({
           ...prev,
           [eventId]: true,
         }));
 
-        // Award coins for attending event
-        await updateCoinsBalance(
-          15,
-          "event_attendance",
-          "Event attendance bonus"
-        );
+        // 奖励金币
+        const event = events.find((e) => e.id === eventId);
+        if (event && event.coins_reward > 0) {
+          await updateCoinsBalance(
+            event.coins_reward,
+            "event_attendance",
+            `Attended event: ${event.title}`
+          );
+        }
       }
 
-      // Refresh events to update attendee count
+      // 刷新活动列表
       fetchEvents();
     } catch (error) {
       console.error("Error updating event attendance:", error);
@@ -204,7 +121,6 @@ export default function EventsScreen({ navigation }) {
             style={styles.eventAvatar}
           />
         </View>
-
         <View style={styles.eventMeta}>
           <View style={styles.metaRow}>
             <Ionicons name="calendar" size={16} color="#666" />
@@ -227,18 +143,16 @@ export default function EventsScreen({ navigation }) {
             <Text style={styles.metaText}>Organized by {item.organizer}</Text>
           </View>
         </View>
-
         <View style={styles.tagsContainer}>
-          <Chip icon="account-group" style={styles.chip}>
-            {item.attendeeCount} attending
+          <Chip icon="account-outline" style={styles.chip}>
+            {item.attendeeCount || 0} attending
           </Chip>
           {item.coins_reward && (
             <Chip icon="wallet" style={styles.chip}>
               +{item.coins_reward} coins
             </Chip>
           )}
-        </View>
-
+        </View>{" "}
         <View style={styles.actionContainer}>
           <Button
             mode={userAttendance[item.id] ? "contained" : "outlined"}
@@ -254,8 +168,22 @@ export default function EventsScreen({ navigation }) {
             onPress={() =>
               navigation.navigate("EventDetails", { eventId: item.id })
             }
+            style={styles.detailsButton}
           >
             Details
+          </Button>
+
+          <Button
+            mode="text"
+            onPress={() =>
+              navigation.navigate("GroupDiscussion", {
+                groupId: "event_" + item.id,
+              })
+            }
+            style={styles.groupButton}
+            icon="forum"
+          >
+            Discuss
           </Button>
         </View>
       </Card.Content>
@@ -358,10 +286,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 8,
   },
   attendButton: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 4,
+  },
+  detailsButton: {
+    flex: 1,
+    marginHorizontal: 2,
+  },
+  groupButton: {
+    flex: 1,
+    marginLeft: 4,
   },
   emptyContainer: {
     flex: 1,

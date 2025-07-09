@@ -40,19 +40,19 @@ export default function ProfileScreen({ navigation }) {
     {
       label: "Events Attended",
       value: "12", // This would come from a query
-      icon: "calendar-check",
+      icon: "calendar",
       color: "#4CAF50",
     },
     {
       label: "Groups Joined",
       value: "5", // This would come from a query
-      icon: "account-group",
+      icon: "account-outline",
       color: "#2196F3",
     },
     {
       label: "Days Active",
       value: "30", // This would come from a query
-      icon: "chart-line",
+      icon: "analytics",
       color: "#FF5722",
     },
   ];
@@ -68,10 +68,10 @@ export default function ProfileScreen({ navigation }) {
             style={styles.avatar}
           />
           <View style={styles.profileInfo}>
-            <Title style={styles.name}>{userProfile?.full_name}</Title>
-            <Paragraph style={styles.email}>{user?.email}</Paragraph>
-            <Text style={styles.university}>{userProfile?.university}</Text>
-            <Text style={styles.studentId}>ID: {userProfile?.student_id}</Text>
+            <Title style={styles.name}>{userProfile?.full_name || "Unknown User"}</Title>
+            <Paragraph style={styles.email}>{user?.email || "No email"}</Paragraph>
+            <Text style={styles.university}>{userProfile?.university || "No university"}</Text>
+            <Text style={styles.studentId}>ID: {userProfile?.student_id || "No ID"}</Text>
           </View>
         </Card.Content>
       </Card>
