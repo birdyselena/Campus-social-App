@@ -54,14 +54,23 @@ export default function EventDetailsScreen({ route, navigation }) {
 
         // Reward coins
         if (event.coins_reward > 0) {
-          await updateCoinsBalance(
+          const result = await updateCoinsBalance(
             event.coins_reward,
             "event_attendance",
             `Attended event: ${event.title}`
           );
-        }
 
-        Alert.alert("Success", "Successfully joined the event!");
+          if (result.success) {
+            Alert.alert(
+              "Success",
+              `Successfully joined the event!\n+${event.coins_reward} coins earned\nNew balance: ${result.user.coins_balance} coins`
+            );
+          } else {
+            Alert.alert("Success", "Successfully joined the event!");
+          }
+        } else {
+          Alert.alert("Success", "Successfully joined the event!");
+        }
       }
 
       // Reload event details

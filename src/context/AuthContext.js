@@ -1,6 +1,10 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { userStorage } from "../services/localStorage";
+import {
+  userStorage,
+  getStorageData,
+  setStorageData,
+} from "../services/localStorage";
 
 // Create the context
 const AuthContext = createContext();
@@ -122,38 +126,32 @@ export const AuthProvider = ({ children }) => {
         throw new Error("User not authenticated");
       }
 
-      // Update user's coins balance
-      const updatedUser = {
-        ...user,
-        coins: (user.coins || 0) + amount,
-      };
+      // Update user's coins balance using localStorage service
+      const updatedUser = await userStorage.updateUserCoins(user.id, amount);
+      if (!updatedUser) {
+        throw new Error("Failed to update user coins");
+      }
 
-      // Save updated user
-      await userStorage.updateUser(user.id, updatedUser);
+      // Update local state
       setUser(updatedUser);
       await userStorage.saveCurrentUser(updatedUser);
 
-      // Record transaction in AsyncStorage
-      const transactionKey = `coins_transactions_${user.id}`;
-      const existingTransactions = await AsyncStorage.getItem(transactionKey);
-      const transactions = existingTransactions
-        ? JSON.parse(existingTransactions)
-        : [];
-
+      // Record transaction in global coins_transactions
+      const allTransactions = await getStorageData("coins_transactions");
       const newTransaction = {
-        id: Date.now().toString(),
-        userId: user.id,
-        amount,
-        type,
-        description,
-        date: new Date().toISOString(),
-        balance: updatedUser.coins,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        user_id: user.id,
+        type: type || "earn",
+        amount: amount,
+        description: description || "Coins transaction",
+        created_at: new Date().toISOString(),
+        balance_after: updatedUser.coins_balance,
       };
 
-      transactions.push(newTransaction);
-      await AsyncStorage.setItem(transactionKey, JSON.stringify(transactions));
+      allTransactions.push(newTransaction);
+      await setStorageData("coins_transactions", allTransactions);
 
-      return { success: true, transaction: newTransaction };
+      return { success: true, transaction: newTransaction, user: updatedUser };
     } catch (error) {
       console.error("Error updating coins balance:", error);
       return { success: false, error: error.message };

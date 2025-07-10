@@ -151,12 +151,12 @@ export default function EventsScreen({ navigation }) {
           </View>
         </View>
         <View style={styles.tagsContainer}>
-          <Chip icon="account" style={styles.chip}>
-            {item.attendeeCount || 0} attending
+          <Chip icon="account-group" style={styles.chip}>
+            <Text>{item.attendeeCount || 0} attending</Text>
           </Chip>
           {item.coins_reward && (
             <Chip icon="wallet" style={styles.chip}>
-              +{item.coins_reward} coins
+              <Text>+{item.coins_reward} coins</Text>
             </Chip>
           )}
         </View>{" "}
@@ -167,7 +167,7 @@ export default function EventsScreen({ navigation }) {
             style={styles.attendButton}
             icon={userAttendance[item.id] ? "check" : "plus"}
           >
-            {userAttendance[item.id] ? "Attending" : "Attend"}
+            <Text>{userAttendance[item.id] ? "Attending" : "Attend"}</Text>
           </Button>
 
           <Button
@@ -177,7 +177,7 @@ export default function EventsScreen({ navigation }) {
             }
             style={styles.detailsButton}
           >
-            Details
+            <Text>Details</Text>
           </Button>
 
           <Button
@@ -190,7 +190,7 @@ export default function EventsScreen({ navigation }) {
             style={styles.groupButton}
             icon="forum"
           >
-            Discuss
+            <Text>Discuss</Text>
           </Button>
         </View>
       </Card.Content>

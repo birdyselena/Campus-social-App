@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   StyleSheet,
+  FlatList,
   RefreshControl,
   TouchableOpacity,
   Alert,
@@ -13,7 +14,9 @@ import {
   Text,
   Card,
   Button,
+  FAB,
   Chip,
+  Avatar,
   ActivityIndicator,
   Surface,
   Divider,
@@ -27,7 +30,7 @@ import {
 } from "../../services/localStorage";
 import { useFocusEffect } from "@react-navigation/native";
 
-const { width } = Dimensions.get("window");
+const { width } = Dimensions.get('window');
 
 export default function CoinsScreen({ navigation }) {
   const { user } = useAuth();
@@ -36,7 +39,7 @@ export default function CoinsScreen({ navigation }) {
   const [partnerBrands, setPartnerBrands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState("brands");
+  const [activeTab, setActiveTab] = useState("brands"); // 添加标签状态
 
   useFocusEffect(
     React.useCallback(() => {
@@ -66,6 +69,7 @@ export default function CoinsScreen({ navigation }) {
       // 获取合作品牌
       const brandsData = await getStorageData("partner_brands");
       if (brandsData.length === 0) {
+        // 如果没有数据，创建示例数据
         const sampleBrands = [
           {
             id: "brand1",
@@ -256,24 +260,12 @@ export default function CoinsScreen({ navigation }) {
   };
 
   const renderTransaction = ({ item }) => (
-    <Surface style={styles.transactionCard} elevation={1}>
-      <View style={styles.transactionContent}>
-        <View style={styles.transactionLeft}>
-          <View
-            style={[
-              styles.transactionIcon,
-              { backgroundColor: item.type === "earn" ? "#e8f5e8" : "#ffebee" },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={item.type === "earn" ? "plus" : "minus"}
-              size={20}
-              color={item.type === "earn" ? "#4CAF50" : "#F44336"}
-            />
-          </View>
+    <Card style={styles.transactionCard}>
+      <Card.Content>
+        <View style={styles.transactionHeader}>
           <View style={styles.transactionInfo}>
             <Text style={styles.transactionType}>
-              {item.type === "earn" ? "Coins Earned" : "Coins Redeemed"}
+              {item.type === "earn" ? "Earned" : "Redeemed"}
             </Text>
             <Text style={styles.transactionDescription}>
               {item.description}
@@ -282,18 +274,18 @@ export default function CoinsScreen({ navigation }) {
               {new Date(item.created_at).toLocaleDateString()}
             </Text>
           </View>
+          <Text
+            style={[
+              styles.transactionAmount,
+              item.type === "earn" ? styles.earnAmount : styles.redeemAmount,
+            ]}
+          >
+            {item.type === "earn" ? "+" : ""}
+            {item.amount}
+          </Text>
         </View>
-        <Text
-          style={[
-            styles.transactionAmount,
-            item.type === "earn" ? styles.earnAmount : styles.redeemAmount,
-          ]}
-        >
-          {item.type === "earn" ? "+" : ""}
-          {item.amount}
-        </Text>
-      </View>
-    </Surface>
+      </Card.Content>
+    </Card>
   );
 
   const renderBrand = ({ item }) => (
@@ -332,11 +324,13 @@ export default function CoinsScreen({ navigation }) {
               </Chip>
             )}
           </View>
-
+          
           {item.redemption_code && (
             <View style={styles.codeContainer}>
               <MaterialCommunityIcons name="tag" size={16} color="#666" />
-              <Text style={styles.redemptionCode}>{item.redemption_code}</Text>
+              <Text style={styles.redemptionCode}>
+                {item.redemption_code}
+              </Text>
             </View>
           )}
         </View>
@@ -345,47 +339,32 @@ export default function CoinsScreen({ navigation }) {
 
         <View style={styles.brandActions}>
           <View style={styles.coinsStatus}>
-            <MaterialCommunityIcons
-              name={
-                coinsBalance >= item.coins_required
-                  ? "check-circle"
-                  : "alert-circle"
-              }
-              size={16}
-              color={
-                coinsBalance >= item.coins_required ? "#4CAF50" : "#FF9800"
-              }
+            <MaterialCommunityIcons 
+              name={coinsBalance >= item.coins_required ? "check-circle" : "alert-circle"} 
+              size={16} 
+              color={coinsBalance >= item.coins_required ? "#4CAF50" : "#FF9800"} 
             />
-            <Text
-              style={[
-                styles.coinsStatusText,
-                {
-                  color:
-                    coinsBalance >= item.coins_required ? "#4CAF50" : "#FF9800",
-                },
-              ]}
-            >
-              {coinsBalance >= item.coins_required
-                ? "Available"
-                : "Need more coins"}
+            <Text style={[
+              styles.coinsStatusText,
+              { color: coinsBalance >= item.coins_required ? "#4CAF50" : "#FF9800" }
+            ]}>
+              {coinsBalance >= item.coins_required ? "Available" : "Need more coins"}
             </Text>
           </View>
-
+          
           <Button
             mode="contained"
             onPress={() => redeemOffer(item)}
             disabled={coinsBalance < item.coins_required}
             style={[
               styles.redeemButton,
-              coinsBalance < item.coins_required && styles.redeemButtonDisabled,
+              coinsBalance < item.coins_required && styles.redeemButtonDisabled
             ]}
             contentStyle={styles.redeemButtonContent}
             labelStyle={styles.redeemButtonLabel}
-            icon={() => (
-              <MaterialCommunityIcons name="gift" size={16} color="white" />
-            )}
           >
-            Redeem
+            <MaterialCommunityIcons name="gift" size={16} color="white" />
+            {"  "}Redeem
           </Button>
         </View>
       </View>
@@ -395,14 +374,14 @@ export default function CoinsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6200EE" />
+        <ActivityIndicator size="large" />
         <Text style={styles.loadingText}>Loading coins data...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView
+    <ScrollView 
       style={styles.container}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -413,7 +392,7 @@ export default function CoinsScreen({ navigation }) {
         <View style={styles.balanceContent}>
           <View style={styles.balanceLeft}>
             <View style={styles.coinIcon}>
-              <MaterialCommunityIcons name="coins" size={40} color="#FFD700" />
+              <MaterialCommunityIcons name="coin" size={40} color="#FFD700" />
             </View>
             <View style={styles.balanceInfo}>
               <Text style={styles.balanceLabel}>Your Coins</Text>
@@ -422,11 +401,7 @@ export default function CoinsScreen({ navigation }) {
             </View>
           </View>
           <View style={styles.balanceRight}>
-            <MaterialCommunityIcons
-              name="trending-up"
-              size={24}
-              color="#4CAF50"
-            />
+            <MaterialCommunityIcons name="trending-up" size={24} color="#4CAF50" />
           </View>
         </View>
       </Surface>
@@ -446,7 +421,7 @@ export default function CoinsScreen({ navigation }) {
         <Surface style={styles.statCard} elevation={2}>
           <MaterialCommunityIcons name="star" size={24} color="#9C27B0" />
           <Text style={styles.statNumber}>
-            {transactions.filter((t) => t.type === "earn").length}
+            {transactions.filter(t => t.type === 'earn').length}
           </Text>
           <Text style={styles.statLabel}>Earned</Text>
         </Surface>
@@ -458,10 +433,10 @@ export default function CoinsScreen({ navigation }) {
           style={[styles.tab, activeTab === "brands" && styles.activeTab]}
           onPress={() => setActiveTab("brands")}
         >
-          <MaterialCommunityIcons
-            name="store"
-            size={20}
-            color={activeTab === "brands" ? "#6200EE" : "#666"}
+          <MaterialCommunityIcons 
+            name="store" 
+            size={20} 
+            color={activeTab === "brands" ? "#6200EE" : "#666"} 
           />
           <Text
             style={[
@@ -476,10 +451,10 @@ export default function CoinsScreen({ navigation }) {
           style={[styles.tab, activeTab === "transactions" && styles.activeTab]}
           onPress={() => setActiveTab("transactions")}
         >
-          <MaterialCommunityIcons
-            name="history"
-            size={20}
-            color={activeTab === "transactions" ? "#6200EE" : "#666"}
+          <MaterialCommunityIcons 
+            name="history" 
+            size={20} 
+            color={activeTab === "transactions" ? "#6200EE" : "#666"} 
           />
           <Text
             style={[
@@ -504,11 +479,7 @@ export default function CoinsScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            partnerBrands.map((brand, index) => (
-              <View key={brand.id || index}>
-                {renderBrand({ item: brand })}
-              </View>
-            ))
+            partnerBrands.map((brand) => renderBrand({ item: brand }))
           )}
         </View>
       ) : (
@@ -522,11 +493,7 @@ export default function CoinsScreen({ navigation }) {
               </Text>
             </View>
           ) : (
-            transactions.map((transaction, index) => (
-              <View key={transaction.id || index}>
-                {renderTransaction({ item: transaction })}
-              </View>
-            ))
+            transactions.map((transaction) => renderTransaction({ item: transaction }))
           )}
         </View>
       )}
@@ -557,6 +524,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderRadius: 16,
     backgroundColor: "#6200EE",
+    elevation: 8,
   },
   balanceContent: {
     flexDirection: "row",
@@ -612,6 +580,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "white",
     alignItems: "center",
+    elevation: 2,
   },
   statNumber: {
     fontSize: 20,
@@ -798,30 +767,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  // Transaction Card Styles
+  // Transaction Card Styles (existing styles)
   transactionCard: {
     marginBottom: 12,
     borderRadius: 12,
     backgroundColor: "white",
+    elevation: 1,
   },
-  transactionContent: {
+  transactionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 16,
-  },
-  transactionLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
   },
   transactionInfo: {
     flex: 1,

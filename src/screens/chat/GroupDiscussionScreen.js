@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import {
   chatStorage,
+  eventStorage,
   reinitializeDiscussions,
 } from "../../services/localStorage";
 import { useFocusEffect } from "@react-navigation/native";
@@ -51,8 +52,30 @@ export default function GroupDiscussionScreen({ route, navigation }) {
 
   const loadGroupInfo = async () => {
     try {
-      const groups = await chatStorage.getAllChatGroups();
-      const groupInfo = groups.find((g) => g.id === groupId);
+      let groupInfo = null;
+
+      // 检查是否为event类型的groupId
+      if (groupId.startsWith("event_")) {
+        const eventId = groupId.replace("event_", "");
+        const events = await eventStorage.getAllEvents();
+        const event = events.find((e) => e.id === eventId);
+
+        if (event) {
+          // 创建伪装的group对象用于event讨论
+          groupInfo = {
+            id: groupId,
+            name: event.title,
+            description: `Discussion for ${event.title}`,
+            member_count: event.attendeeCount || 0,
+            type: "event",
+          };
+        }
+      } else {
+        // 常规聊天组
+        const groups = await chatStorage.getAllChatGroups();
+        groupInfo = groups.find((g) => g.id === groupId);
+      }
+
       if (groupInfo) {
         setGroup(groupInfo);
         // Set navigation title with debug button
@@ -183,9 +206,11 @@ export default function GroupDiscussionScreen({ route, navigation }) {
               ]}
               textStyle={styles.chipText}
             >
-              {item.type
-                ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-                : "General"}
+              <Text style={styles.chipText}>
+                {item.type
+                  ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
+                  : "General"}
+              </Text>
             </Chip>
           </View>
 
@@ -201,7 +226,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
               onPress={() => handleLikeDiscussion(item.id)}
               style={styles.actionButton}
             >
-              {item.likes || 0}
+              <Text>{item.likes || 0}</Text>
             </Button>
             <Button
               mode="text"
@@ -214,7 +239,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
               }
               style={styles.actionButton}
             >
-              {item.replies ? item.replies.length : 0}
+              <Text>{item.replies ? item.replies.length : 0}</Text>
             </Button>
           </View>
         </Card.Content>
@@ -242,26 +267,43 @@ export default function GroupDiscussionScreen({ route, navigation }) {
           </View>
 
           <View style={styles.actionButtons}>
-            <Button
-              mode="contained"
-              icon="chat"
-              onPress={() =>
-                navigation.navigate("ChatGroup", { groupId: groupId })
-              }
-              style={styles.chatButton}
-            >
-              Live Chat
-            </Button>
-            <Button
-              mode="outlined"
-              icon="information"
-              onPress={() =>
-                navigation.navigate("GroupInfo", { groupId: groupId })
-              }
-              style={styles.infoButton}
-            >
-              Group Info
-            </Button>
+            {group.type !== "event" && (
+              <Button
+                mode="contained"
+                icon="chat"
+                onPress={() =>
+                  navigation.navigate("ChatGroup", { groupId: groupId })
+                }
+                style={styles.chatButton}
+              >
+                <Text>Live Chat</Text>
+              </Button>
+            )}
+            {group.type !== "event" && (
+              <Button
+                mode="outlined"
+                icon="information"
+                onPress={() =>
+                  navigation.navigate("GroupInfo", { groupId: groupId })
+                }
+                style={styles.infoButton}
+              >
+                <Text>Group Info</Text>
+              </Button>
+            )}
+            {group.type === "event" && (
+              <Button
+                mode="contained"
+                icon="calendar"
+                onPress={() => {
+                  const eventId = groupId.replace("event_", "");
+                  navigation.navigate("EventDetails", { eventId: eventId });
+                }}
+                style={styles.chatButton}
+              >
+                <Text>Event Details</Text>
+              </Button>
+            )}
           </View>
         </Card.Content>
       </Card>
@@ -324,7 +366,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                   style={styles.typeOptionChip}
                   icon={getTypeIcon(type)}
                 >
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                  <Text>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
                 </Chip>
               ))}
             </View>
@@ -357,14 +399,14 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                 onPress={() => setShowCreateModal(false)}
                 style={styles.cancelButton}
               >
-                Cancel
+                <Text>Cancel</Text>
               </Button>
               <Button
                 mode="contained"
                 onPress={handleCreateDiscussion}
                 style={styles.createButton}
               >
-                Create
+                <Text>Create</Text>
               </Button>
             </View>
           </ScrollView>

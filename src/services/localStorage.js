@@ -85,7 +85,13 @@ export const userStorage = {
     const users = await getStorageData(STORAGE_KEYS.USERS);
     const userIndex = users.findIndex((u) => u.id === userId);
     if (userIndex !== -1) {
+      // 确保 coins_balance 字段存在
+      if (!users[userIndex].coins_balance) {
+        users[userIndex].coins_balance = users[userIndex].coins || 0;
+      }
       users[userIndex].coins_balance += amount;
+      // 同时更新旧的 coins 字段以保持兼容性
+      users[userIndex].coins = users[userIndex].coins_balance;
       await setStorageData(STORAGE_KEYS.USERS, users);
       return users[userIndex];
     }
@@ -634,7 +640,12 @@ export const reinitializeDiscussions = async () => {
   console.log("Reinitializing discussions data...");
   await clearDiscussionsData();
 
+  // 获取现有的events和chat groups来创建对应的discussions
+  const events = await getStorageData(STORAGE_KEYS.EVENTS);
+  const chatGroups = await getStorageData(STORAGE_KEYS.CHAT_GROUPS);
+
   const sampleDiscussions = [
+    // 常规聊天组讨论
     {
       id: generateId(),
       group_id: "1",
@@ -692,6 +703,24 @@ export const reinitializeDiscussions = async () => {
       created_at: new Date().toISOString(),
     },
   ];
+
+  // 为每个event创建对应的讨论
+  events.forEach((event) => {
+    const eventGroupId = `event_${event.id}`;
+    sampleDiscussions.push({
+      id: generateId(),
+      group_id: eventGroupId,
+      title: `Welcome to ${event.title} Discussion`,
+      content: `Let's discuss everything about ${event.title}! Share your thoughts, ask questions, and connect with other attendees.`,
+      type: "announcement",
+      author_name: "Event Organizer",
+      author_id: "event-organizer",
+      likes: 0,
+      liked_by: [],
+      replies: [],
+      created_at: new Date().toISOString(),
+    });
+  });
 
   await setStorageData(STORAGE_KEYS.DISCUSSIONS, sampleDiscussions);
   console.log("Discussions data reinitialized:", sampleDiscussions);

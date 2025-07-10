@@ -90,13 +90,25 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleDailyCheckIn = async () => {
-    const result = await updateCoinsBalance(
-      10,
-      "daily_checkin",
-      "Daily check-in bonus"
-    );
-    if (!result.error) {
-      alert("Daily check-in complete! +10 coins earned");
+    try {
+      const result = await updateCoinsBalance(
+        10,
+        "daily_checkin",
+        "Daily check-in bonus"
+      );
+
+      if (result.success) {
+        alert(
+          `Daily check-in complete! +10 coins earned\nNew balance: ${result.user.coins_balance} coins`
+        );
+        // Refresh dashboard data to update the display
+        fetchDashboardData();
+      } else {
+        alert("Failed to process daily check-in. Please try again.");
+      }
+    } catch (error) {
+      console.error("Daily check-in error:", error);
+      alert("An error occurred during check-in. Please try again.");
     }
   };
 
@@ -168,7 +180,7 @@ export default function HomeScreen({ navigation }) {
               </Button>
               <Button
                 mode="contained"
-                icon="account"
+                icon="account-group"
                 onPress={() => navigation.navigate("CreateGroup")}
                 style={styles.actionButton}
               >
