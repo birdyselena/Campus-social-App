@@ -10,7 +10,7 @@ import {
   Chip,
 } from "react-native-paper";
 import { useAuth } from "../../context/AuthContext";
-import { eventStorage } from "../../services/localStorage";
+import { eventStorage, coinsService } from "../../services/localStorage";
 
 export default function CreateEventScreen({ navigation }) {
   const { user } = useAuth();
@@ -92,12 +92,32 @@ export default function CreateEventScreen({ navigation }) {
       const newEvent = await eventStorage.createEvent(eventData);
 
       if (newEvent) {
-        Alert.alert("Success", "Event created successfully!", [
-          {
-            text: "OK",
-            onPress: () => navigation.goBack(),
-          },
-        ]);
+        // 奖励创建活动积分 - 创建活动奖励50积分
+        try {
+          await coinsService.rewardEventCreation(
+            user.id,
+            newEvent.id,
+            eventData.title
+          );
+          Alert.alert(
+            "创建成功！",
+            `活动 "${eventData.title}" 创建成功！\n您获得了 50 积分奖励！`,
+            [
+              {
+                text: "好的",
+                onPress: () => navigation.goBack(),
+              },
+            ]
+          );
+        } catch (error) {
+          console.error("Error rewarding coins:", error);
+          Alert.alert("Success", "Event created successfully!", [
+            {
+              text: "OK",
+              onPress: () => navigation.goBack(),
+            },
+          ]);
+        }
       }
     } catch (error) {
       console.error("Error creating event:", error);

@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, ScrollView, RefreshControl } from "react-native";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+} from "react-native";
 import {
   Card,
   Title,
@@ -9,20 +16,38 @@ import {
   Text,
   Chip,
   FAB,
+  Surface,
 } from "react-native-paper";
-import { Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
-import { supabase } from "../../services/supabase";
+import { coinsService } from "../../services/localStorage";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function HomeScreen({ navigation }) {
-  const { user, userProfile, updateCoinsBalance } = useAuth();
+  const { user, userProfile } = useAuth();
   const [recentEvents, setRecentEvents] = useState([]);
   const [recentChats, setRecentChats] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [coinsBalance, setCoinsBalance] = useState(0);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchDashboardData();
+      fetchCoinsBalance();
+    }, [])
+  );
+
+  const fetchCoinsBalance = async () => {
+    if (user?.id) {
+      try {
+        const balance = await coinsService.getUserCoinsBalance(user.id);
+        setCoinsBalance(balance);
+      } catch (error) {
+        console.error("Error fetching coins balance:", error);
+      }
+    }
+  };
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -89,29 +114,6 @@ export default function HomeScreen({ navigation }) {
     setLoading(false);
   };
 
-  const handleDailyCheckIn = async () => {
-    try {
-      const result = await updateCoinsBalance(
-        10,
-        "daily_checkin",
-        "Daily check-in bonus"
-      );
-
-      if (result.success) {
-        alert(
-          `Daily check-in complete! +10 coins earned\nNew balance: ${result.user.coins_balance} coins`
-        );
-        // Refresh dashboard data to update the display
-        fetchDashboardData();
-      } else {
-        alert("Failed to process daily check-in. Please try again.");
-      }
-    } catch (error) {
-      console.error("Daily check-in error:", error);
-      alert("An error occurred during check-in. Please try again.");
-    }
-  };
-
   return (
     <View style={styles.container}>
       <ScrollView
@@ -126,13 +128,10 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.welcomeHeader}>
               <Avatar.Text
                 size={60}
-                label={
-                  userProfile?.full_name
-                    ? userProfile.full_name.substring(0, 2).toUpperCase()
-                    : user?.name
-                    ? user.name.substring(0, 2).toUpperCase()
-                    : "U"
-                }
+                label={generateAvatarLabel(
+                  userProfile?.full_name || user?.name,
+                  "U"
+                )}
                 style={styles.avatar}
               />
               <View style={styles.welcomeText}>
@@ -148,18 +147,54 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
 
-            <View style={styles.coinsContainer}>
-              <Ionicons name="wallet" size={24} color="#FFD700" />
-              <Text style={styles.coinsText}>
-                {userProfile?.coins_balance || 0} Coins
-              </Text>
+            {/* Coins Display */}
+            <TouchableOpacity
+              style={styles.coinsContainer}
+              onPress={() => navigation.navigate("Coins")}
+            >
+              <MaterialCommunityIcons name="wallet" size={24} color="#FFD700" />
+              <View style={styles.coinsInfo}>
+                <Text style={styles.coinsText}>{coinsBalance}</Text>
+                <Text style={styles.coinsLabel}>积分</Text>
+              </View>
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
+
+            {/* Quick Actions */}
+            <View style={styles.quickActions}>
               <Button
                 mode="outlined"
-                compact
-                onPress={handleDailyCheckIn}
-                style={styles.checkInButton}
+                icon="gift"
+                onPress={async () => {
+                  try {
+                    await coinsService.rewardDailyLogin(user.id);
+                    await fetchCoinsBalance();
+                    Alert.alert("签到成功！", "每日登录奖励已领取！+10积分", [
+                      { text: "好的", style: "default" },
+                    ]);
+                  } catch (error) {
+                    Alert.alert(
+                      "提示",
+                      error.message || "今天已经领取过奖励了！",
+                      [{ text: "好的", style: "default" }]
+                    );
+                  }
+                }}
+                style={styles.actionButton}
               >
-                Daily Check-in
+                每日签到
+              </Button>
+              <Button
+                mode="contained"
+                icon="plus"
+                onPress={() => navigation.navigate("CreateEvent")}
+                style={styles.actionButton}
+              >
+                创建活动
               </Button>
             </View>
           </Card.Content>
@@ -303,18 +338,32 @@ const styles = StyleSheet.create({
   coinsContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#f8f9fa",
     padding: 12,
     borderRadius: 8,
+    marginTop: 12,
+  },
+  coinsInfo: {
+    flex: 1,
+    marginLeft: 8,
   },
   coinsText: {
     fontSize: 18,
     fontWeight: "bold",
-    marginLeft: 8,
-    flex: 1,
+    color: "#333",
   },
-  checkInButton: {
-    marginLeft: 8,
+  coinsLabel: {
+    fontSize: 12,
+    color: "#666",
+  },
+  quickActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 16,
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
   },
   actionCard: {
     marginBottom: 16,
@@ -323,10 +372,6 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: "row",
     justifyContent: "space-around",
-  },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: 4,
   },
   sectionCard: {
     marginBottom: 16,

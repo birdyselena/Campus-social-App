@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, FlatList, RefreshControl } from "react-native";
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  Alert,
+} from "react-native";
 import {
   Card,
   Title,
@@ -13,7 +19,8 @@ import {
 } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
-import { eventStorage } from "../../services/localStorage";
+import { eventStorage, coinsService } from "../../services/localStorage";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function EventsScreen({ navigation }) {
@@ -84,14 +91,24 @@ export default function EventsScreen({ navigation }) {
           [eventId]: true,
         }));
 
-        // 奖励金币
+        // 奖励积分 - 参加活动奖励20积分
         const event = events.find((e) => e.id === eventId);
-        if (event && event.coins_reward > 0) {
-          await updateCoinsBalance(
-            event.coins_reward,
-            "event_attendance",
-            `Attended event: ${event.title}`
-          );
+        if (event) {
+          try {
+            await coinsService.rewardEventParticipation(
+              user.id,
+              eventId,
+              event.title
+            );
+            // 可以选择显示奖励提示
+            Alert.alert(
+              "积分奖励！",
+              `参加活动 "${event.title}" 获得了 20 积分！`,
+              [{ text: "好的", style: "default" }]
+            );
+          } catch (error) {
+            console.error("Error rewarding coins:", error);
+          }
         }
       }
 
@@ -117,7 +134,7 @@ export default function EventsScreen({ navigation }) {
           </View>
           <Avatar.Text
             size={50}
-            label={item.title.substring(0, 2).toUpperCase()}
+            label={generateAvatarLabel(item.title, "E")}
             style={styles.eventAvatar}
           />
         </View>

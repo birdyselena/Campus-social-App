@@ -17,6 +17,7 @@ import {
 } from "react-native-paper";
 import { useAuth } from "../../context/AuthContext";
 import { chatStorage } from "../../services/localStorage";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function ChatGroupScreen({ route, navigation }) {
@@ -106,11 +107,7 @@ export default function ChatGroupScreen({ route, navigation }) {
         {!isOwnMessage && (
           <Avatar.Text
             size={32}
-            label={
-              item.sender_name
-                ? item.sender_name.substring(0, 2).toUpperCase()
-                : "U"
-            }
+            label={generateAvatarLabel(item.sender_name)}
             style={styles.messageAvatar}
           />
         )}

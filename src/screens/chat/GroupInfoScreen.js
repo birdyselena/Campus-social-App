@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import { chatStorage, userStorage } from "../../services/localStorage";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function GroupInfoScreen({ route, navigation }) {
@@ -100,7 +101,7 @@ export default function GroupInfoScreen({ route, navigation }) {
         <Avatar.Text
           {...props}
           size={40}
-          label={member.full_name.substring(0, 2).toUpperCase()}
+          label={generateAvatarLabel(member.full_name, "U")}
         />
       )}
       right={(props) =>
@@ -128,7 +129,7 @@ export default function GroupInfoScreen({ route, navigation }) {
           <View style={styles.headerContent}>
             <Avatar.Text
               size={80}
-              label={group.name.substring(0, 2).toUpperCase()}
+              label={generateAvatarLabel(group.name, "G")}
               style={styles.groupAvatar}
             />
             <View style={styles.groupBasicInfo}>

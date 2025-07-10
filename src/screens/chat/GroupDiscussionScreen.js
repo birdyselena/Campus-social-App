@@ -27,6 +27,10 @@ import {
   eventStorage,
   reinitializeDiscussions,
 } from "../../services/localStorage";
+import {
+  generateAvatarLabel,
+  getUserDisplayName,
+} from "../../utils/avatarHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function GroupDiscussionScreen({ route, navigation }) {
@@ -180,8 +184,8 @@ export default function GroupDiscussionScreen({ route, navigation }) {
     }
   };
   const renderDiscussion = ({ item }) => {
-    const authorName = item.author_name || item.user_name || "Unknown User";
-    const authorInitials = authorName.substring(0, 2).toUpperCase();
+    const authorName = getUserDisplayName(item, "Unknown User");
+    const authorInitials = generateAvatarLabel(authorName);
 
     return (
       <Card style={styles.discussionCard}>
@@ -206,11 +210,9 @@ export default function GroupDiscussionScreen({ route, navigation }) {
               ]}
               textStyle={styles.chipText}
             >
-              <Text style={styles.chipText}>
-                {item.type
-                  ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
-                  : "General"}
-              </Text>
+              {item.type
+                ? item.type.charAt(0).toUpperCase() + item.type.slice(1)
+                : "General"}
             </Chip>
           </View>
 
@@ -226,7 +228,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
               onPress={() => handleLikeDiscussion(item.id)}
               style={styles.actionButton}
             >
-              <Text>{item.likes || 0}</Text>
+              {item.likes || 0}
             </Button>
             <Button
               mode="text"
@@ -239,7 +241,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
               }
               style={styles.actionButton}
             >
-              <Text>{item.replies ? item.replies.length : 0}</Text>
+              {item.replies ? item.replies.length : 0}
             </Button>
           </View>
         </Card.Content>
@@ -254,7 +256,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
           <View style={styles.groupHeader}>
             <Avatar.Text
               size={60}
-              label={group?.name.substring(0, 2).toUpperCase()}
+              label={(group?.name || "Unknown").substring(0, 2).toUpperCase()}
               style={styles.groupAvatar}
             />
             <View style={styles.groupInfo}>
@@ -276,7 +278,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                 }
                 style={styles.chatButton}
               >
-                <Text>Live Chat</Text>
+                Live Chat
               </Button>
             )}
             {group.type !== "event" && (
@@ -288,7 +290,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                 }
                 style={styles.infoButton}
               >
-                <Text>Group Info</Text>
+                Group Info
               </Button>
             )}
             {group.type === "event" && (
@@ -301,7 +303,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                 }}
                 style={styles.chatButton}
               >
-                <Text>Event Details</Text>
+                Event Details
               </Button>
             )}
           </View>
@@ -366,7 +368,7 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                   style={styles.typeOptionChip}
                   icon={getTypeIcon(type)}
                 >
-                  <Text>{type.charAt(0).toUpperCase() + type.slice(1)}</Text>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
                 </Chip>
               ))}
             </View>
@@ -399,14 +401,14 @@ export default function GroupDiscussionScreen({ route, navigation }) {
                 onPress={() => setShowCreateModal(false)}
                 style={styles.cancelButton}
               >
-                <Text>Cancel</Text>
+                Cancel
               </Button>
               <Button
                 mode="contained"
                 onPress={handleCreateDiscussion}
                 style={styles.createButton}
               >
-                <Text>Create</Text>
+                Create
               </Button>
             </View>
           </ScrollView>

@@ -20,6 +20,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import { supabase } from "../../services/supabase";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
 
 export default function PartnerBrandsScreen({ navigation }) {
   const { userProfile, updateCoinsBalance } = useAuth();
@@ -256,7 +257,7 @@ export default function PartnerBrandsScreen({ navigation }) {
           <View style={styles.brandHeader}>
             <Avatar.Text
               size={60}
-              label={item.name.substring(0, 2).toUpperCase()}
+              label={generateAvatarLabel(item.name, "B")}
               style={styles.brandAvatar}
             />
             <View style={styles.brandInfo}>

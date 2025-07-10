@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import { chatStorage } from "../../services/localStorage";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
 import { useFocusEffect } from "@react-navigation/native";
 
 export default function MyGroupsScreen({ navigation }) {
@@ -45,7 +46,7 @@ export default function MyGroupsScreen({ navigation }) {
         <View style={styles.groupHeader}>
           <Avatar.Text
             size={50}
-            label={item.name.substring(0, 2).toUpperCase()}
+            label={generateAvatarLabel(item.name, "G")}
             style={styles.groupAvatar}
           />
           <View style={styles.groupInfo}>

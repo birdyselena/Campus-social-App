@@ -82,20 +82,46 @@ export const userStorage = {
 
   // 更新用户金币
   updateUserCoins: async (userId, amount) => {
-    const users = await getStorageData(STORAGE_KEYS.USERS);
-    const userIndex = users.findIndex((u) => u.id === userId);
-    if (userIndex !== -1) {
-      // 确保 coins_balance 字段存在
-      if (!users[userIndex].coins_balance) {
-        users[userIndex].coins_balance = users[userIndex].coins || 0;
+    try {
+      const users = await getStorageData(STORAGE_KEYS.USERS);
+      const userIndex = users.findIndex((u) => u.id === userId);
+
+      if (userIndex === -1) {
+        console.error("User not found:", userId);
+        throw new Error("User not found");
       }
+
+      // 确保 coins_balance 字段存在，如果不存在则初始化为100
+      if (typeof users[userIndex].coins_balance !== "number") {
+        users[userIndex].coins_balance = 100; // 默认初始积分
+        console.log(`初始化用户 ${userId} 的积分: 100`);
+      }
+
       users[userIndex].coins_balance += amount;
+
+      // 防止积分变为负数
+      if (users[userIndex].coins_balance < 0) {
+        users[userIndex].coins_balance = 0;
+      }
+
       // 同时更新旧的 coins 字段以保持兼容性
       users[userIndex].coins = users[userIndex].coins_balance;
-      await setStorageData(STORAGE_KEYS.USERS, users);
+
+      const success = await setStorageData(STORAGE_KEYS.USERS, users);
+      if (!success) {
+        throw new Error("Failed to save user data");
+      }
+
+      console.log(
+        `用户 ${userId} 积分更新: ${amount > 0 ? "+" : ""}${amount}, 新余额: ${
+          users[userIndex].coins_balance
+        }`
+      );
       return users[userIndex];
+    } catch (error) {
+      console.error("Error updating user coins:", error);
+      throw new Error("Failed to update user coins");
     }
-    return null;
   },
 
   // 获取所有用户
@@ -133,6 +159,29 @@ export const userStorage = {
     users.push(newUser);
     await setStorageData(STORAGE_KEYS.USERS, users);
     return newUser;
+  },
+
+  // 初始化用户积分（如果用户没有积分记录）
+  initializeUserCoins: async (userId) => {
+    try {
+      const users = await getStorageData(STORAGE_KEYS.USERS);
+      const userIndex = users.findIndex((u) => u.id === userId);
+
+      if (userIndex !== -1) {
+        // 确保用户有积分字段
+        if (typeof users[userIndex].coins_balance !== "number") {
+          users[userIndex].coins_balance = 100; // 默认初始积分
+          users[userIndex].coins = 100; // 兼容性
+          await setStorageData(STORAGE_KEYS.USERS, users);
+          console.log(`初始化用户 ${userId} 的积分: 100`);
+        }
+        return users[userIndex];
+      }
+      return null;
+    } catch (error) {
+      console.error("Error initializing user coins:", error);
+      return null;
+    }
   },
 };
 
@@ -423,6 +472,253 @@ export const discussionStorage = {
   },
 };
 
+// 积分系统
+export const coinsService = {
+  // 获取用户积分余额
+  getUserCoinsBalance: async (userId) => {
+    try {
+      const users = await getStorageData(STORAGE_KEYS.USERS);
+      const user = users.find((u) => u.id === userId);
+
+      if (!user) {
+        console.warn(`用户 ${userId} 不存在`);
+        return 0;
+      }
+
+      // 如果用户没有积分记录，初始化为100积分
+      if (typeof user.coins_balance !== "number") {
+        console.log(`初始化用户 ${userId} 的积分显示`);
+        return 100; // 默认积分
+      }
+
+      return user.coins_balance || 0;
+    } catch (error) {
+      console.error("Error getting user coins balance:", error);
+      return 0;
+    }
+  },
+
+  // 添加积分交易记录
+  addCoinsTransaction: async (
+    userId,
+    amount,
+    type,
+    description,
+    referenceId = null
+  ) => {
+    try {
+      const transactions = await getStorageData(
+        STORAGE_KEYS.COINS_TRANSACTIONS
+      );
+      const transaction = {
+        id: generateId(),
+        user_id: userId,
+        amount: amount,
+        type: type, // 'earn' or 'redeem'
+        transaction_type: type === "earn" ? "activity_reward" : "redemption",
+        description: description,
+        reference_id: referenceId,
+        created_at: new Date().toISOString(),
+      };
+
+      transactions.push(transaction);
+      await setStorageData(STORAGE_KEYS.COINS_TRANSACTIONS, transactions);
+
+      // 更新用户积分余额
+      const updatedUser = await userStorage.updateUserCoins(userId, amount);
+      if (!updatedUser) {
+        throw new Error("Failed to update user coins balance");
+      }
+
+      return transaction;
+    } catch (error) {
+      console.error("Error adding coins transaction:", error);
+      throw error;
+    }
+  },
+
+  // 获取用户交易记录
+  getUserTransactions: async (userId) => {
+    const transactions = await getStorageData(STORAGE_KEYS.COINS_TRANSACTIONS);
+    return transactions
+      .filter((t) => t.user_id === userId)
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+  },
+
+  // 活动积分奖励
+  rewardEventParticipation: async (userId, eventId, eventTitle) => {
+    return await coinsService.addCoinsTransaction(
+      userId,
+      20, // 参加活动奖励20积分
+      "earn",
+      `参加活动: ${eventTitle}`,
+      eventId
+    );
+  },
+
+  // 创建活动积分奖励
+  rewardEventCreation: async (userId, eventId, eventTitle) => {
+    return await coinsService.addCoinsTransaction(
+      userId,
+      50, // 创建活动奖励50积分
+      "earn",
+      `创建活动: ${eventTitle}`,
+      eventId
+    );
+  },
+
+  // 每日登录奖励
+  rewardDailyLogin: async (userId) => {
+    const today = new Date().toDateString();
+    const transactions = await getStorageData(STORAGE_KEYS.COINS_TRANSACTIONS);
+
+    // 检查今天是否已经获得每日奖励
+    const todayReward = transactions.find(
+      (t) =>
+        t.user_id === userId &&
+        (t.transaction_type === "daily_login" ||
+          t.description === "每日登录奖励") &&
+        new Date(t.created_at).toDateString() === today
+    );
+
+    if (todayReward) {
+      throw new Error("今天已经获得过每日登录奖励了");
+    }
+
+    // 创建特殊的每日登录交易记录
+    const transactions_list = await getStorageData(
+      STORAGE_KEYS.COINS_TRANSACTIONS
+    );
+    const transaction = {
+      id: generateId(),
+      user_id: userId,
+      amount: 10,
+      type: "earn",
+      transaction_type: "daily_login",
+      description: "每日登录奖励",
+      reference_id: null,
+      created_at: new Date().toISOString(),
+    };
+
+    transactions_list.push(transaction);
+    await setStorageData(STORAGE_KEYS.COINS_TRANSACTIONS, transactions_list);
+
+    // 更新用户积分余额
+    const updatedUser = await userStorage.updateUserCoins(userId, 10);
+    if (!updatedUser) {
+      throw new Error("Failed to update user coins balance");
+    }
+
+    return transaction;
+  },
+
+  // 群聊创建奖励
+  rewardGroupCreation: async (userId, groupId, groupName) => {
+    return await coinsService.addCoinsTransaction(
+      userId,
+      30, // 创建群聊奖励30积分
+      "earn",
+      `创建群聊: ${groupName}`,
+      groupId
+    );
+  },
+
+  // 兑换合作伙伴优惠
+  redeemPartnerOffer: async (userId, brandId, brandName, coinsRequired) => {
+    const userBalance = await coinsService.getUserCoinsBalance(userId);
+
+    if (userBalance < coinsRequired) {
+      throw new Error("积分不足");
+    }
+
+    return await coinsService.addCoinsTransaction(
+      userId,
+      -coinsRequired, // 负数表示扣除积分
+      "redeem",
+      `兑换: ${brandName}`,
+      brandId
+    );
+  },
+
+  // 获取合作伙伴品牌
+  getPartnerBrands: async () => {
+    let brands = await getStorageData(STORAGE_KEYS.PARTNER_BRANDS);
+
+    if (brands.length === 0) {
+      // 初始化默认品牌数据
+      brands = [
+        {
+          id: "1",
+          name: "KFC",
+          description: "肯德基全鸡家桶优惠券",
+          logo: "🍗",
+          coins_required: 100,
+          discount_percentage: 20,
+          category: "Food & Beverage",
+          website_url: "https://www.kfc.com.au",
+          redemption_code: "KFC20OFF",
+          is_active: true,
+        },
+        {
+          id: "2",
+          name: "UNSW Bookshop",
+          description: "UNSW书店教材折扣",
+          logo: "📚",
+          coins_required: 150,
+          discount_percentage: 15,
+          category: "Education",
+          website_url: "https://www.bookshop.unsw.edu.au",
+          redemption_code: "UNSW15OFF",
+          is_active: true,
+        },
+        {
+          id: "3",
+          name: "McDonald's",
+          description: "麦当劳超值套餐券",
+          logo: "🍟",
+          coins_required: 80,
+          discount_percentage: 25,
+          category: "Food & Beverage",
+          website_url: "https://www.mcdonalds.com.au",
+          redemption_code: "MCD25OFF",
+          is_active: true,
+        },
+        {
+          id: "4",
+          name: "JB Hi-Fi",
+          description: "JB Hi-Fi电子产品优惠",
+          logo: "🎧",
+          coins_required: 200,
+          discount_percentage: 10,
+          category: "Electronics",
+          website_url: "https://www.jbhifi.com.au",
+          redemption_code: "JBHIFI10",
+          is_active: true,
+        },
+        {
+          id: "5",
+          name: "Boost Juice",
+          description: "Boost果汁店饮品券",
+          logo: "🥤",
+          coins_required: 60,
+          discount_percentage: 30,
+          category: "Food & Beverage",
+          website_url: "https://www.boostjuice.com.au",
+          redemption_code: "BOOST30",
+          is_active: true,
+        },
+      ];
+
+      await setStorageData(STORAGE_KEYS.PARTNER_BRANDS, brands);
+    }
+
+    return brands.filter((brand) => brand.is_active);
+  },
+};
+
 // 初始化示例数据
 export const initializeData = async () => {
   // 检查是否已经初始化用户
@@ -624,21 +920,17 @@ export const clearAllStorageData = async () => {
       STORAGE_KEYS.CURRENT_USER,
     ]);
     console.log("All storage data cleared");
+    return true;
   } catch (error) {
     console.error("Error clearing storage data:", error);
+    return false;
   }
-};
-
-// 清除旧的讨论数据（用于调试）
-export const clearDiscussionsData = async () => {
-  console.log("Clearing discussions data...");
-  await AsyncStorage.removeItem(STORAGE_KEYS.DISCUSSIONS);
 };
 
 // 重新初始化讨论数据
 export const reinitializeDiscussions = async () => {
-  console.log("Reinitializing discussions data...");
-  await clearDiscussionsData();
+  // 清除现有讨论数据
+  await setStorageData(STORAGE_KEYS.DISCUSSIONS, []);
 
   // 获取现有的events和chat groups来创建对应的discussions
   const events = await getStorageData(STORAGE_KEYS.EVENTS);

@@ -21,6 +21,7 @@ import {
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import {
+  coinsService,
   userStorage,
   getStorageData,
   setStorageData,
@@ -48,109 +49,21 @@ export default function CoinsScreen({ navigation }) {
     try {
       setLoading(true);
 
-      // 获取用户最新信息
+      // 获取用户最新积分余额
       if (user && user.id) {
-        const userProfile = await userStorage.fetchUserProfile(user.id);
-        if (userProfile) {
-          setCoinsBalance(userProfile.coins_balance || 0);
-        }
+        const balance = await coinsService.getUserCoinsBalance(user.id);
+        setCoinsBalance(balance);
       }
 
       // 获取交易记录
-      const transactionsData = await getStorageData("coins_transactions");
-      const userTransactions = transactionsData.filter(
-        (transaction) => transaction.user_id === user?.id
-      );
+      const userTransactions = user?.id
+        ? await coinsService.getUserTransactions(user.id)
+        : [];
       setTransactions(userTransactions);
 
       // 获取合作品牌
-      const brandsData = await getStorageData("partner_brands");
-      if (brandsData.length === 0) {
-        const sampleBrands = [
-          {
-            id: "brand1",
-            name: "Subway",
-            description: "15% off on all footlong subs",
-            coins_required: 80,
-            discount_percentage: 15,
-            logo: "🥪",
-            category: "Food & Drink",
-            expiry_date: "2025-12-31",
-            is_active: true,
-            website_url: "https://www.subway.com",
-            redemption_code: "STUDENT15",
-          },
-          {
-            id: "brand2",
-            name: "KFC",
-            description: "20% off on family meals",
-            coins_required: 100,
-            discount_percentage: 20,
-            logo: "🍗",
-            category: "Food & Drink",
-            expiry_date: "2025-12-31",
-            is_active: true,
-            website_url: "https://www.kfc.com",
-            redemption_code: "CAMPUS20",
-          },
-          {
-            id: "brand3",
-            name: "Burger King",
-            description: "Buy 1 Get 1 Free Whopper",
-            coins_required: 120,
-            discount_percentage: 50,
-            logo: "🍔",
-            category: "Food & Drink",
-            expiry_date: "2025-12-31",
-            is_active: true,
-            website_url: "https://www.burgerking.com",
-            redemption_code: "BOGO2024",
-          },
-          {
-            id: "brand4",
-            name: "Haidilao Hot Pot",
-            description: "10% off on all meals",
-            coins_required: 150,
-            discount_percentage: 10,
-            logo: "🍲",
-            category: "Food & Drink",
-            expiry_date: "2025-12-31",
-            is_active: true,
-            website_url: "https://www.haidilao.com",
-            redemption_code: "HOTPOT10",
-          },
-          {
-            id: "brand5",
-            name: "Campus Bookstore",
-            description: "25% off on textbooks",
-            coins_required: 60,
-            discount_percentage: 25,
-            logo: "📚",
-            category: "Education",
-            expiry_date: "2025-12-31",
-            is_active: true,
-            website_url: "https://www.campusbookstore.com",
-            redemption_code: "BOOKS25",
-          },
-          {
-            id: "brand6",
-            name: "Tech Zone",
-            description: "15% off on electronics",
-            coins_required: 200,
-            discount_percentage: 15,
-            logo: "💻",
-            category: "Electronics",
-            expiry_date: "2025-12-31",
-            is_active: true,
-            website_url: "https://www.techzone.com",
-            redemption_code: "TECH15",
-          },
-        ];
-        await setStorageData("partner_brands", sampleBrands);
-        setPartnerBrands(sampleBrands);
-      } else {
-        setPartnerBrands(brandsData);
-      }
+      const brands = await coinsService.getPartnerBrands();
+      setPartnerBrands(brands);
     } catch (error) {
       console.error("Error fetching coins data:", error);
     } finally {
@@ -163,91 +76,73 @@ export default function CoinsScreen({ navigation }) {
     setRefreshing(true);
     fetchCoinsData();
   };
-
   const redeemOffer = async (brand) => {
     if (!user || !user.id) {
       Alert.alert("Error", "Please log in to redeem offers");
       return;
     }
 
+    // 检查积分是否足够
     if (coinsBalance < brand.coins_required) {
       Alert.alert(
-        "Insufficient Coins",
-        `You need ${brand.coins_required} coins to redeem this offer. You have ${coinsBalance} coins.`
+        "积分不足",
+        `您需要 ${brand.coins_required} 积分来兑换此优惠，您目前有 ${coinsBalance} 积分。\n\n您可以通过以下方式获得更多积分：\n• 创建活动 (+50积分)\n• 参加活动 (+20积分)\n• 创建群聊 (+30积分)\n• 每日登录 (+10积分)`,
+        [{ text: "确定", style: "default" }]
       );
       return;
     }
 
     Alert.alert(
-      "Confirm Redemption",
-      `Are you sure you want to redeem "${brand.name}" for ${brand.coins_required} coins?`,
+      "确认兑换",
+      `确定要用 ${brand.coins_required} 积分兑换 "${brand.name}" 吗？`,
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "取消", style: "cancel" },
         {
-          text: "Redeem",
+          text: "兑换",
           onPress: async () => {
             try {
-              // 扣除用户金币
-              const updatedUser = await userStorage.updateUserCoins(
+              // 使用新的积分服务进行兑换
+              await coinsService.redeemPartnerOffer(
                 user.id,
-                -brand.coins_required
+                brand.id,
+                brand.name,
+                brand.coins_required
               );
 
-              if (updatedUser) {
-                setCoinsBalance(updatedUser.coins_balance);
+              // 更新本地积分显示
+              const newBalance = await coinsService.getUserCoinsBalance(
+                user.id
+              );
+              setCoinsBalance(newBalance);
 
-                // 创建交易记录
-                const transactionData = {
-                  id:
-                    Date.now().toString() +
-                    Math.random().toString(36).substr(2, 9),
-                  user_id: user.id,
-                  type: "redeem",
-                  amount: -brand.coins_required,
-                  description: `Redeemed: ${brand.name}`,
-                  brand_id: brand.id,
-                  created_at: new Date().toISOString(),
-                };
-
-                const allTransactions = await getStorageData(
-                  "coins_transactions"
-                );
-                allTransactions.push(transactionData);
-                await setStorageData("coins_transactions", allTransactions);
-
-                // Show success message with redemption code and option to visit website
-                Alert.alert(
-                  "Redemption Successful!",
-                  `You have successfully redeemed ${
-                    brand.name
-                  }!\n\nRedemption Code: ${
-                    brand.redemption_code || "N/A"
-                  }\nNew Balance: ${
-                    updatedUser.coins_balance
-                  } coins\n\nWould you like to visit ${
-                    brand.name
-                  } website to use your discount?`,
-                  [
-                    { text: "Later", style: "cancel" },
-                    {
-                      text: "Visit Website",
-                      onPress: () => {
-                        if (brand.website_url) {
-                          Linking.openURL(brand.website_url).catch((err) => {
-                            console.error("Failed to open URL:", err);
-                            Alert.alert("Error", "Could not open website");
-                          });
-                        }
-                      },
+              // 显示成功消息和兑换码
+              Alert.alert(
+                "兑换成功！",
+                `您已成功兑换 ${brand.name}！\n\n兑换码: ${
+                  brand.redemption_code || "N/A"
+                }\n新余额: ${newBalance} 积分\n\n是否要访问 ${
+                  brand.name
+                } 网站使用优惠？`,
+                [
+                  { text: "稍后", style: "cancel" },
+                  {
+                    text: "访问网站",
+                    onPress: () => {
+                      if (brand.website_url) {
+                        Linking.openURL(brand.website_url).catch((err) => {
+                          console.error("Failed to open URL:", err);
+                          Alert.alert("错误", "无法打开网站");
+                        });
+                      }
                     },
-                  ]
-                );
+                  },
+                ]
+              );
 
-                fetchCoinsData(); // 刷新数据
-              }
+              fetchCoinsData(); // 刷新数据
             } catch (error) {
               console.error("Error redeeming offer:", error);
-              Alert.alert("Error", "Failed to redeem offer. Please try again.");
+              Alert.alert("错误", error.message || "兑换失败，请重试");
             }
           },
         },

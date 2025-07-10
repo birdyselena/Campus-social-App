@@ -20,6 +20,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import { chatStorage } from "../../services/localStorage";
+import {
+  generateAvatarLabel,
+  getUserDisplayName,
+} from "../../utils/avatarHelpers";
 
 export default function DiscussionDetailScreen({ route, navigation }) {
   const { discussionId, groupId } = route.params;
@@ -111,11 +115,13 @@ export default function DiscussionDetailScreen({ route, navigation }) {
       <View style={styles.replyHeader}>
         <Avatar.Text
           size={32}
-          label={reply.author_name.substring(0, 2).toUpperCase()}
+          label={generateAvatarLabel(reply.author_name)}
           style={styles.replyAvatar}
         />
         <View style={styles.replyInfo}>
-          <Text style={styles.replyAuthor}>{reply.author_name}</Text>
+          <Text style={styles.replyAuthor}>
+            {reply.author_name || "Unknown"}
+          </Text>
           <Text style={styles.replyTimestamp}>
             {new Date(reply.created_at).toLocaleString()}
           </Text>
@@ -144,11 +150,13 @@ export default function DiscussionDetailScreen({ route, navigation }) {
             <View style={styles.discussionHeader}>
               <Avatar.Text
                 size={50}
-                label={discussion.author_name.substring(0, 2).toUpperCase()}
+                label={generateAvatarLabel(discussion.author_name)}
                 style={styles.authorAvatar}
               />
               <View style={styles.discussionInfo}>
-                <Text style={styles.authorName}>{discussion.author_name}</Text>
+                <Text style={styles.authorName}>
+                  {discussion.author_name || "Unknown"}
+                </Text>
                 <Text style={styles.timestamp}>
                   {new Date(discussion.created_at).toLocaleString()}
                 </Text>

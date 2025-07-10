@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../../context/AuthContext";
 import { eventStorage } from "../../services/localStorage";
+import { generateAvatarLabel } from "../../utils/avatarHelpers";
 
 export default function EventDetailsScreen({ route, navigation }) {
   const { eventId } = route.params;
@@ -108,7 +109,7 @@ export default function EventDetailsScreen({ route, navigation }) {
           <View style={styles.header}>
             <Avatar.Text
               size={60}
-              label={event.title.substring(0, 2).toUpperCase()}
+              label={generateAvatarLabel(event.title, "E")}
               style={styles.avatar}
             />
             <View style={styles.titleContainer}>

@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from "react-native-paper";
 import { useAuth } from "../../context/AuthContext";
-import { chatStorage } from "../../services/localStorage";
+import { chatStorage, coinsService } from "../../services/localStorage";
 
 export default function CreateGroupScreen({ navigation }) {
   const { user, userProfile } = useAuth();
@@ -43,20 +43,48 @@ export default function CreateGroupScreen({ navigation }) {
       const newGroup = await chatStorage.createChatGroup(groupData);
 
       if (newGroup) {
-        Alert.alert("Success", "Group created successfully!", [
-          {
-            text: "Go to Chat",
-            onPress: () => {
-              navigation.navigate("ChatGroup", { groupId: newGroup.id });
+        // 奖励创建群聊积分 - 创建群聊奖励30积分
+        try {
+          await coinsService.rewardGroupCreation(
+            user.id,
+            newGroup.id,
+            groupName
+          );
+          Alert.alert(
+            "创建成功！",
+            `群聊 "${groupName}" 创建成功！\n您获得了 30 积分奖励！`,
+            [
+              {
+                text: "进入聊天",
+                onPress: () => {
+                  navigation.navigate("ChatGroup", { groupId: newGroup.id });
+                },
+              },
+              {
+                text: "稍后",
+                onPress: () => {
+                  navigation.goBack();
+                },
+              },
+            ]
+          );
+        } catch (error) {
+          console.error("Error rewarding coins:", error);
+          Alert.alert("Success", "Group created successfully!", [
+            {
+              text: "Go to Chat",
+              onPress: () => {
+                navigation.navigate("ChatGroup", { groupId: newGroup.id });
+              },
             },
-          },
-          {
-            text: "Later",
-            onPress: () => {
-              navigation.goBack();
+            {
+              text: "Later",
+              onPress: () => {
+                navigation.goBack();
+              },
             },
-          },
-        ]);
+          ]);
+        }
       }
     } catch (error) {
       console.error("Error creating group:", error);
